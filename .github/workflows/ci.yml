@@ -33,6 +33,7 @@ jobs:
           python -m pip install -e .
 
       - name: Import check
+        shell: bash
         run: |
           python - <<'EOF'
           import WAeys
