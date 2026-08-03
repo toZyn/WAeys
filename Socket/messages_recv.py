@@ -8,6 +8,7 @@ Composes on top of ``make_messages_socket`` and wires the ``CB:message``,
 from __future__ import annotations
 
 import asyncio
+import base64
 import json
 import os
 from datetime import datetime, timezone
@@ -1085,7 +1086,7 @@ def make_messages_recv_socket(sock: dict, config: dict) -> dict:
             primary_ephemeral_public_key_wrapped = to_required_buffer(
                 get_binary_node_child_buffer(link_code_companion_reg, 'link_code_pairing_wrapped_primary_ephemeral_pub')
             )
-            code_pairing_public_key = decipher_link_public_key(primary_ephemeral_public_key_wrapped)
+            code_pairing_public_key = await decipher_link_public_key(primary_ephemeral_public_key_wrapped)
             companion_shared_key = Curve.shared_key(
                 auth_state['creds'].get('pairingEphemeralKeyPair').get('private'),
                 code_pairing_public_key,
@@ -1112,7 +1113,7 @@ def make_messages_recv_socket(sock: dict, config: dict) -> dict:
             )
             identity_payload = companion_shared_key + identity_shared_key + random_bytes
             adv_secret_key = hkdf(identity_payload, 32, info=b'adv_secret')
-            auth_state['creds']['advSecretKey'] = adv_secret_key.hex()
+            auth_state['creds']['advSecretKey'] = base64.b64encode(adv_secret_key).decode('utf-8')
             await query({
                 'tag': 'iq',
                 'attrs': {
