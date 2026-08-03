@@ -8,9 +8,7 @@ Composes on top of ``make_messages_socket`` and wires the ``CB:message``,
 from __future__ import annotations
 
 import asyncio
-import base64
 import json
-import os
 from datetime import datetime, timezone
 
 from ..Defaults.index import (
@@ -22,13 +20,6 @@ from ..Defaults.index import (
 )
 from ..Types.Message import MessageReceiptType, WAMessageStatus, WAMessageStubType
 from ..Types.State import ReachoutTimelockEnforcementType
-from ..Utils.crypto import (
-    Curve,
-    aes_decrypt_ctr,
-    aes_encrypt_gcm,
-    derive_pairing_code_key,
-    hkdf,
-)
 from ..Utils.decode_wa_message import (
     ACCOUNT_RESTRICTED_TEXT,
     MISSING_KEYS_ERROR_TEXT,
@@ -1077,80 +1068,6 @@ def make_messages_recv_socket(sock: dict, config: dict) -> dict:
                     blocklist = [attrs.get('jid')]
                     block_type = 'add' if attrs.get('action') == 'block' else 'remove'
                     ev.emit('blocklist.update', {'blocklist': blocklist, 'type': block_type})
-        elif node_type == 'link_code_companion_reg':
-            link_code_companion_reg = get_binary_node_child(node, 'link_code_companion_reg')
-            ref = to_required_buffer(get_binary_node_child_buffer(link_code_companion_reg, 'link_code_pairing_ref'))
-            primary_identity_public_key = to_required_buffer(
-                get_binary_node_child_buffer(link_code_companion_reg, 'primary_identity_pub')
-            )
-            primary_ephemeral_public_key_wrapped = to_required_buffer(
-                get_binary_node_child_buffer(link_code_companion_reg, 'link_code_pairing_wrapped_primary_ephemeral_pub')
-            )
-            code_pairing_public_key = await decipher_link_public_key(primary_ephemeral_public_key_wrapped)
-            companion_shared_key = Curve.shared_key(
-                auth_state['creds'].get('pairingEphemeralKeyPair').get('private'),
-                code_pairing_public_key,
-            )
-            random_bytes = os.urandom(32)
-            link_code_salt = os.urandom(32)
-            link_code_pairing_expanded = hkdf(
-                companion_shared_key,
-                32,
-                info='link_code_pairing_key_bundle_encryption_key'.encode('utf-8'),
-                salt=link_code_salt,
-            )
-            encrypt_payload = (
-                bytes(auth_state['creds'].get('signedIdentityKey').get('public'))
-                + bytes(primary_identity_public_key)
-                + random_bytes
-            )
-            encrypt_iv = os.urandom(12)
-            encrypted = aes_encrypt_gcm(encrypt_payload, link_code_pairing_expanded, encrypt_iv, b'')
-            encrypted_payload = link_code_salt + encrypt_iv + encrypted
-            identity_shared_key = Curve.shared_key(
-                auth_state['creds'].get('signedIdentityKey').get('private'),
-                primary_identity_public_key,
-            )
-            identity_payload = companion_shared_key + identity_shared_key + random_bytes
-            adv_secret_key = hkdf(identity_payload, 32, info=b'adv_secret')
-            auth_state['creds']['advSecretKey'] = base64.b64encode(adv_secret_key).decode('utf-8')
-            await query({
-                'tag': 'iq',
-                'attrs': {
-                    'to': S_WHATSAPP_NET,
-                    'type': 'set',
-                    'id': messages_sock['generateMessageTag'](),
-                    'xmlns': 'md',
-                },
-                'content': [
-                    {
-                        'tag': 'link_code_companion_reg',
-                        'attrs': {
-                            'jid': (auth_state['creds'].get('me') or {}).get('id'),
-                            'stage': 'companion_finish',
-                        },
-                        'content': [
-                            {
-                                'tag': 'link_code_pairing_wrapped_key_bundle',
-                                'attrs': {},
-                                'content': encrypted_payload,
-                            },
-                            {
-                                'tag': 'companion_identity_public',
-                                'attrs': {},
-                                'content': auth_state['creds'].get('signedIdentityKey').get('public'),
-                            },
-                            {
-                                'tag': 'link_code_pairing_ref',
-                                'attrs': {},
-                                'content': ref,
-                            },
-                        ],
-                    }
-                ],
-            })
-            auth_state['creds']['registered'] = True
-            ev.emit('creds.update', auth_state['creds'])
         elif node_type == 'privacy_token':
             await handle_privacy_token_notification(node)
 
@@ -1231,19 +1148,6 @@ def make_messages_recv_socket(sock: dict, config: dict) -> dict:
             'getLIDForPN': get_lid_for_pn,
             'onNewJidStored': track_tc_token_jid,
         })
-
-    async def decipher_link_public_key(data):
-        buffer = to_required_buffer(data)
-        salt = buffer[:32]
-        secret_key = await derive_pairing_code_key(auth_state['creds'].get('pairingCode'), salt)
-        iv = buffer[32:48]
-        payload = buffer[48:80]
-        return aes_decrypt_ctr(payload, secret_key, iv)
-
-    def to_required_buffer(data):
-        if data is None:
-            raise Boom('Invalid buffer', status_code=400)
-        return bytes(data)
 
     async def will_send_message_again(id, participant):
         key = f'{id}:{participant}'
