@@ -3,4 +3,4 @@
 No JavaScript/node_modules dependency. All crypto is pure Python.
 """
 from . import WABinary, Utils, Defaults, Types, WAProto, Signal, Socket
-__version__ = "0.1.2"
+__version__ = "0.1.3"
