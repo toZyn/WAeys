@@ -1,0 +1,34 @@
+"""Port of src/Types/Label.ts — labels and label colors."""
+
+from __future__ import annotations
+
+import enum
+
+from typing import Dict
+
+Label = Dict  # {id, name, color, deleted, predefinedId?}
+
+LabelActionBody = Dict  # {id, name?, color?, deleted?, predefinedId?}
+
+
+class LabelColor(enum.IntEnum):
+    Color1 = 0
+    Color2 = 1
+    Color3 = 2
+    Color4 = 3
+    Color5 = 4
+    Color6 = 5
+    Color7 = 6
+    Color8 = 7
+    Color9 = 8
+    Color10 = 9
+    Color11 = 10
+    Color12 = 11
+    Color13 = 12
+    Color14 = 13
+    Color15 = 14
+    Color16 = 15
+    Color17 = 16
+    Color18 = 17
+    Color19 = 18
+    Color20 = 19

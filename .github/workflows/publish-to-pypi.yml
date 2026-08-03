@@ -1,0 +1,56 @@
+name: Publish to PyPI
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+jobs:
+  publish:
+    name: Build & publish waeys to PyPI
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write   # needed for Trusted Publishing to PyPI
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install build tooling
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install build wheel
+
+      - name: Build sdist and wheel
+        run: python -m build
+
+      - name: Verify wheel contents
+        run: |
+          python - <<'EOF'
+          import zipfile, glob
+          wheel = glob.glob('dist/*.whl')[0]
+          with zipfile.ZipFile(wheel) as z:
+              names = z.namelist()
+          assert any(n.endswith('WAeys/__init__.py') for n in names), 'package missing from wheel'
+          assert any(n.endswith('.proto') for n in names), 'proto data missing from wheel'
+          assert not any('__pycache__' in n or n.endswith('.pyc') for n in names), 'pyc/__pycache__ present'
+          print('wheel OK:', wheel, '| files:', len(names))
+          EOF
+
+      - name: Publish to Test PyPI
+        if: github.event_name == 'workflow_dispatch' || (github.event_name == 'release' && startsWith(github.event.release.tag_name, 'test-'))
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          repository-url: https://test.pypi.org/legacy/
+          skip-existing: true
+
+      - name: Publish to PyPI
+        if: github.event_name == 'release' && !startsWith(github.event.release.tag_name, 'test-')
+        uses: pypa/gh-action-pypi-publish@release/v1

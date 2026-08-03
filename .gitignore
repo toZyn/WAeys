@@ -1,0 +1,14 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.eggs/
+.venv/
+venv/
+*.log
+.nohup.out
+nohup.out
+wa_session/
+waey_auth/
+.env

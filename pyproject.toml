@@ -1,0 +1,53 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "waeys"
+version = "0.1.0"
+description = "Pure-Python port of Baileys - WhatsApp Web protocol client (no Node.js)."
+readme = "README.md"
+requires-python = ">=3.10"
+license = "MIT"
+authors = [
+    { name = "Zyn", email = "toZyn@users.noreply.github.com" },
+]
+keywords = ["whatsapp", "baileys", "wa", "whatsapp-web", "bot", "e2ee", "signal"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Topic :: Communications :: Chat",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+dependencies = [
+    "websockets>=12.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/toZyn/WAeys"
+Repository = "https://github.com/toZyn/WAeys"
+Documentation = "https://github.com/toZyn/WAeys/blob/main/docs/usage.en.md"
+Issues = "https://github.com/toZyn/WAeys/issues"
+Changelog = "https://github.com/toZyn/WAeys/releases"
+
+[tool.setuptools]
+package-dir = { "WAeys" = "." }
+packages = ["WAeys", "WAeys.Defaults", "WAeys.Types", "WAeys.Utils", "WAeys.Signal", "WAeys.Signal.Group", "WAeys.Socket", "WAeys.Socket.Client", "WAeys.WABinary", "WAeys.WAProto", "WAeys.WAM", "WAeys.WAUSync"]
+
+[tool.setuptools.package-data]
+WAeys = ["WAProto/*.proto"]
+
+[tool.setuptools.exclude-package-data]
+"*" = ["**/__pycache__/*", "**/*.pyc"]
+
+[project.optional-dependencies]
+dev = [
+    "build",
+    "twine",
+]
+
+[tool.black]
+line-length = 120
+target-version = ["py310"]
