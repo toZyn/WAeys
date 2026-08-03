@@ -1188,7 +1188,7 @@ def make_messages_socket(sock: dict, config: dict) -> dict:
                     'upload': wa_upload_to_server,
                     'mediaCache': config.get('mediaCache'),
                     'options': config.get('options'),
-                    'messageId': generate_message_id_v2((sock.get('user') or {}).get('id') if sock.get('user') else None),
+                    'messageId': generate_message_id_v2((sock.get('user')() or {}).get('id') if sock.get('user') else None),
                     **options,
                 },
             )
