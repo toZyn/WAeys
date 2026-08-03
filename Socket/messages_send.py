@@ -1089,7 +1089,7 @@ def make_messages_socket(sock: dict, config: dict) -> dict:
 
     wait_for_msg_media_update = bind_wait_for_event(ev, 'messages.media-update')
 
-    def _on_socket_end():
+    def _on_socket_end(error):
         nonlocal media_conn
         if not config.get('userDevicesCache'):
             if hasattr(user_devices_cache, 'close'):

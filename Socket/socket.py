@@ -39,6 +39,7 @@ from ..WABinary.generic_utils import (
     get_binary_node_child,
     get_binary_node_child_buffer,
     get_binary_node_children,
+    reduce_binary_node_to_dictionary,
 )
 from ..WABinary.jid_utils import S_WHATSAPP_NET, is_lid_user, jid_decode, jid_encode
 from ..WABinary.types import BinaryNode
@@ -65,6 +66,7 @@ from ..Utils.generics import (
     promise_timeout,
 )
 from ..Utils.noise_handler import make_noise_handler
+from ..Utils.make_mutex import make_mutex
 from ..Utils.signal import get_next_pre_keys_node, xmpp_signed_pre_key
 from ..Utils.validate_connection import configure_successful_pairing, generate_login_node, generate_registration_node
 from .Client import WebSocketClient
@@ -1102,7 +1104,53 @@ def make_socket(config: dict):
             generate_message_tag,
         )
 
-    return {
+    message_mutex = make_mutex()
+
+    async def upsert_message(msg: dict, type_: str) -> None:
+        ev.emit('messages.upsert', {'messages': [msg], 'type': type_})
+
+    privacy_settings_cache = {}
+
+    async def fetch_privacy_settings(force=False) -> dict:
+        if not privacy_settings_cache or force:
+            result = await query(
+                BinaryNode(
+                    tag='iq',
+                    attrs={'xmlns': 'privacy', 'to': S_WHATSAPP_NET, 'type': 'get'},
+                    content=[BinaryNode(tag='privacy', attrs={})],
+                )
+            )
+            content = result.content or []
+            privacy_settings_cache.update(reduce_binary_node_to_dictionary(content[0], 'category') if content else {})
+        return dict(privacy_settings_cache)
+
+    async def group_metadata(jid: str) -> dict:
+        from .messages_recv import extract_group_metadata
+
+        result = await query(
+            BinaryNode(
+                tag='iq',
+                attrs={'type': 'get', 'xmlns': 'w:g2', 'to': jid},
+                content=[BinaryNode(tag='query', attrs={'request': 'interactive'})],
+            )
+        )
+        return extract_group_metadata(result)
+
+    async def group_toggle_ephemeral(jid: str, ephemeral_expiration) -> None:
+        content = (
+            BinaryNode(tag='ephemeral', attrs={'expiration': str(ephemeral_expiration)})
+            if ephemeral_expiration
+            else BinaryNode(tag='not_ephemeral', attrs={})
+        )
+        await query(
+            BinaryNode(
+                tag='iq',
+                attrs={'type': 'set', 'xmlns': 'w:g2', 'to': jid},
+                content=[content],
+            )
+        )
+
+    result = {
         'type': 'md',
         'ws': ws,
         'ev': ev,
@@ -1133,7 +1181,16 @@ def make_socket(config: dict):
         'onWhatsApp': on_whats_app,
         'fetchAccountReachoutTimelock': fetch_account_reachout_timelock,
         'fetchNewChatMessageCap': fetch_new_chat_message_cap,
+        'messageMutex': message_mutex,
+        'upsertMessage': upsert_message,
+        'fetchPrivacySettings': fetch_privacy_settings,
+        'groupMetadata': group_metadata,
+        'groupToggleEphemeral': group_toggle_ephemeral,
     }
+
+    from .messages_recv import make_messages_recv_socket
+
+    return make_messages_recv_socket(result, config)
 
 
 class Error(Exception):

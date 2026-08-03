@@ -35,7 +35,7 @@ from . import (
     tc_token_utils,
     validate_connection,
 )
-from .auth_utils import add_transaction_capability, init_auth_creds, make_cacheable_signal_key_store
+from .auth_utils import add_transaction_capability, init_auth_creds, make_cacheable_signal_key_store, make_memory_key_store
 from .browser_utils import Browsers
 from .companion_reg_client_utils import CompanionWebClientType, build_pairing_qr_data, get_companion_platform_id
 from .crypto import Curve, aes_encrypt_ctr, curve25519_donna_sign, derive_pairing_code_key, signed_key_pair
@@ -122,6 +122,7 @@ __all__ = [
     'add_transaction_capability',
     'init_auth_creds',
     'make_cacheable_signal_key_store',
+    'make_memory_key_store',
     'Browsers',
     'CompanionWebClientType',
     'build_pairing_qr_data',

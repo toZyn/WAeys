@@ -124,7 +124,7 @@ O ponto de entrada é `make_socket(config)` em `WAeys.Socket`. Ele retorna um di
 import asyncio
 
 from WAeys.Defaults.index import default_connection_config
-from WAeys.Utils.auth_utils import init_auth_creds
+from WAeys.Utils.auth_utils import init_auth_creds, make_memory_key_store
 from WAeys.Utils.browser_utils import Browsers
 from WAeys.Socket.socket import make_socket
 
@@ -188,7 +188,7 @@ auth = {
 `init_auth_creds()` (`WAeys.Utils.auth_utils`) retorna um conjunto de credenciais novo e vazio:
 
 ```python
-from WAeys.Utils.auth_utils import init_auth_creds
+from WAeys.Utils.auth_utils import init_auth_creds, make_memory_key_store
 creds = init_auth_creds()
 ```
 
@@ -361,7 +361,7 @@ import asyncio
 import traceback
 
 from WAeys.Defaults.index import default_connection_config
-from WAeys.Utils.auth_utils import init_auth_creds
+from WAeys.Utils.auth_utils import init_auth_creds, make_memory_key_store
 from WAeys.Utils.browser_utils import Browsers
 from WAeys.Socket.socket import make_socket
 

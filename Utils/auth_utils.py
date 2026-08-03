@@ -15,6 +15,35 @@ def _get_unique_id(type_: str, id_: str) -> str:
     return f'{type_}.{id_}'
 
 
+class SignalKeyStore:
+    """SignalKeyStore wrapper.
+
+    Exposes the store's async functions as attributes (``store.get``/``store.set``)
+    and also supports subscript access (``store['get']``/``store['set']``) so both
+    calling conventions used across the codebase work without dict built-in shadowing.
+    """
+
+    __slots__ = ('_methods',)
+
+    def __init__(self, methods):
+        self._methods = dict(methods)
+
+    def __getattr__(self, name):
+        methods = self._methods
+        if name in methods:
+            return methods[name]
+        raise AttributeError(name)
+
+    def __getitem__(self, key):
+        methods = self._methods
+        if key in methods:
+            return methods[key]
+        raise KeyError(key)
+
+    def __contains__(self, key):
+        return key in self._methods
+
+
 def make_cacheable_signal_key_store(store, logger=None, cache=None):
     """Adds caching capability to a SignalKeyStore."""
     if cache is None:
@@ -68,11 +97,14 @@ def make_cacheable_signal_key_store(store, logger=None, cache=None):
     async def clear():
         cache['_store'].clear()
         cache['_expiry'].clear()
-        clear_ = store.get('clear')
+        try:
+            clear_ = store['clear']
+        except (KeyError, TypeError):
+            clear_ = None
         if clear_:
             await clear_()
 
-    return {'get': get, 'set': set, 'clear': clear}
+    return SignalKeyStore({'get': get, 'set': set, 'clear': clear})
 
 
 def _run_queued(lock: asyncio.Lock, coro_factory):
@@ -247,13 +279,13 @@ def add_transaction_capability(state, logger, options):
         finally:
             release_tx_mutex_ref(key)
 
-    return {
+    return SignalKeyStore({
         'get': get,
         'set': set,
         'isInTransaction': is_in_transaction,
         'is_in_transaction': is_in_transaction,
         'transaction': transaction,
-    }
+    })
 
 
 def assert_me_id(creds: dict) -> str:
@@ -283,3 +315,27 @@ def init_auth_creds() -> dict:
         'routingInfo': None,
         'additionalData': None,
     }
+
+
+def make_memory_key_store():
+    """In-memory SignalKeyStore: {get, set, clear} as used by the auth state."""
+
+    store = {}
+
+    async def get(type_, ids):
+        data = store.get(type_) or {}
+        return {i: data[i] for i in ids if i in data}
+
+    async def set(data):
+        for type_, entries in data.items():
+            bucket = store.setdefault(type_, {})
+            for id_, value in entries.items():
+                if value is None:
+                    bucket.pop(id_, None)
+                else:
+                    bucket[id_] = value
+
+    async def clear():
+        store.clear()
+
+    return SignalKeyStore({'get': get, 'set': set, 'clear': clear})

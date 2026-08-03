@@ -1972,7 +1972,7 @@ def make_messages_recv_socket(sock: dict, config: dict) -> dict:
     in_flight463_recoveries = set()
 
     def _on_connection_update(update):
-        nonlocal send_active_receipts, last_tc_token_prune_ts
+        nonlocal send_active_receipts, last_tc_token_prune_ts, tc_token_index_timer
         if 'isOnline' in update:
             send_active_receipts = update['isOnline']
             if logger is not None:
@@ -1998,7 +1998,8 @@ def make_messages_recv_socket(sock: dict, config: dict) -> dict:
 
     ev.on('connection.update', _on_connection_update)
 
-    def _on_socket_end():
+    def _on_socket_end(error):
+        nonlocal send_active_receipts
         if not config.get('msgRetryCounterCache') and hasattr(msg_retry_cache, 'clear'):
             msg_retry_cache.clear()
 
