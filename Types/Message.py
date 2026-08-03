@@ -34,7 +34,7 @@ class WAMessageAddressingMode(enum.Enum):
     LID = 'lid'
 
 
-MessageWithContextInfo = Union[str, ...]
+MessageWithContextInfo = Dict  # {contextInfo?} wrapper type
 
 DownloadableMessage = Dict  # {mediaKey?, directPath?, url?}
 
